@@ -52,11 +52,18 @@ class SpectraPlotter:
         self.canvas.draw()
 
     def toggle_spectrum_visibility(self, filename, is_visible):
+        """
+        Cambia la visibilidad de una línea de forma eficiente, SIN redibujar el gráfico.
+        """
         if filename in self.plotted_lines:
             line = self.plotted_lines[filename]
             line.set_visible(is_visible)
-            
-            # La forma más segura es recrear la leyenda
-            self.ax.legend()
-            
-            self.canvas.draw()
+
+    def redraw_legend_and_canvas(self):
+        """
+        Redibuja la leyenda y el canvas. Se debe llamar UNA VEZ después de
+        todos los cambios de visibilidad.
+        """
+        # La forma más segura de actualizar la leyenda es recrearla
+        self.ax.legend()
+        self.canvas.draw()
