@@ -1,0 +1,28 @@
+{
+ "signatures": [
+  {
+   "keyid": "e606982aa9e4afede59a03c3b02b02cd57101be8a2482c2351bdebac2bf81ef5",
+   "sig": "1049c1663519acf29954735d846413fb0d350775698f3d72c81537b1ad72b770f813bf053ce4770e1257f167c90a6396b262208cae0bbcab36cd719182e9d700"
+  }
+ ],
+ "signed": {
+  "_type": "targets",
+  "expires": "2025-10-08T21:58:50Z",
+  "spec_version": "1.0.31",
+  "targets": {
+   "SpectraConverter-4.0.0.tar.gz": {
+    "custom": {
+     "tufup": {
+      "required": false
+     },
+     "user": null
+    },
+    "hashes": {
+     "sha256": "255f22e3775edbee419cf1a938220626599b183da2fd9b6d1cc579fa43741e2f"
+    },
+    "length": 97052548
+   }
+  },
+  "version": 2
+ }
+}
