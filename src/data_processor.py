@@ -10,7 +10,6 @@ warnings.filterwarnings("ignore", "overflow encountered in exp", RuntimeWarning)
 def process_spectrum(dataframe, processing_steps):
     """
     Aplica una serie de pasos de procesamiento a un dataframe.
-    Esta versión es más simple y se adapta al nuevo flujo de trabajo.
     """
     df = dataframe.copy()
 
@@ -37,7 +36,10 @@ def process_spectrum(dataframe, processing_steps):
         df['intensity'] = df['intensity'].rolling(window=params.get('window', 5), center=True, min_periods=1).mean()
 
     elif method == 'savgol':
-        if params.get('window', 11) > params.get('order', 2):
-            df['intensity'] = savgol_filter(df['intensity'], **params)
+        # --- ARREGLO AQUÍ: Usamos los nombres de parámetro correctos ---
+        window_length = params.get('window', 11)
+        polyorder = params.get('order', 2)
+        if window_length > polyorder:
+            df['intensity'] = savgol_filter(df['intensity'], window_length=window_length, polyorder=polyorder)
 
     return df

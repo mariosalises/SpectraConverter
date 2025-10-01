@@ -117,7 +117,6 @@ class MainAppWindow:
         plot_panel = ttk.Frame(self.processing_frame, style='TFrame', padding=10)
         plot_panel.pack(side="right", expand=True, fill="both", padx=(0,5), pady=5)
         
-        # --- ARREGLO DEL LAYOUT: Los botones de acción se sacan del área de scroll ---
         action_frame = ttk.Frame(control_panel, style='TFrame')
         action_frame.pack(side="bottom", fill="x", pady=(10,0))
         apply_button = ttk.Button(action_frame, text="Aplicar Cambios", command=self._on_apply_processing)
@@ -127,7 +126,6 @@ class MainAppWindow:
         export_button = ttk.Button(action_frame, text="Exportar", command=self._on_export)
         export_button.pack(side="right", fill="x", expand=True, padx=2)
 
-        # --- ARREGLO DEL LAYOUT: El resto del contenido va en un frame que SÍ se expande ---
         scrollable_content_frame = ttk.Frame(control_panel, style='TFrame')
         scrollable_content_frame.pack(side="top", fill="both", expand=True)
         
@@ -229,71 +227,51 @@ class MainAppWindow:
     def _populate_spectra_list(self):
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
-            
+
         self.spectra_vars = {}
         self.ordered_filenames = [spec['filename'] for spec in self.loaded_spectra]
-        
+
         for filename in self.ordered_filenames:
             var = tk.BooleanVar(value=True)
             self.spectra_vars[filename] = var
             cb = ttk.Checkbutton(self.scrollable_frame, text=filename, variable=var, style='White.TCheckbutton')
-            # Usamos solo .bind() para tener un único punto de control.
-            cb.bind("<Button-1>", lambda event, f=filename: self._on_spectrum_click(event, f))
+            cb.bind("<Button-1>", lambda e, f=filename: self._on_spectrum_click(e, f))
             cb.pack(anchor="w", padx=5, pady=2)
-            
+
         self.scrollable_frame.update_idletasks()
         self.spectra_list_canvas.config(scrollregion=self.spectra_list_canvas.bbox("all"))
         self.last_clicked_index = None
 
     def _on_spectrum_click(self, event, filename):
-        """
-        Lógica de selección UNIFICADA Y CORRECTA usando after_idle.
-        """
         current_index = self.ordered_filenames.index(filename)
 
-        # Deferir la lógica hasta que el checkbox haya actualizado su variable interna
         def process_click():
             var = self.spectra_vars[filename]
-            new_state = var.get()  # Ahora sí, este es el estado final y correcto
-
+            new_state = var.get()
             is_shift = (event.state & 0x0001) != 0
             is_ctrl = (event.state & 0x0004) != 0
 
             if is_shift and self.last_clicked_index is not None:
-                # Lógica de Shift-Clic
                 start = min(self.last_clicked_index, current_index)
                 end = max(self.last_clicked_index, current_index)
-
-                # Aplicar el nuevo estado del ítem clickeado a todo el rango
                 for i in range(start, end + 1):
-                    fname = self.ordered_filenames[i]
-                    self.spectra_vars[fname].set(new_state)
-
-                # Usar la actualización completa y lenta porque hemos modificado un bloque
+                    self.spectra_vars[self.ordered_filenames[i]].set(new_state)
                 self._update_full_plot_visibility()
-
             elif is_ctrl:
-                # Ctrl-Clic: Se respeta el cambio y no se toca el ancla
                 self._update_single_line_visibility(filename)
-
             else:
-                # Clic normal: Se respeta el cambio y se establece un nuevo ancla
                 self._update_single_line_visibility(filename)
                 self.last_clicked_index = current_index
-
-        # Pospone la ejecución de 'process_click' hasta que tkinter esté "libre"
-        # (es decir, después de que haya procesado el cambio de estado del checkbox)
-        event.widget.after_idle(process_click)
         
+        event.widget.after_idle(process_click)
+
     def _update_single_line_visibility(self, filename):
-        """Actualización RÁPIDA: solo cambia una línea y redibuja el canvas."""
         if not self.plotter: return
         is_visible = self.spectra_vars[filename].get()
         self.plotter.toggle_spectrum_visibility(filename, is_visible)
         self.plotter.canvas.draw()
 
     def _update_full_plot_visibility(self):
-        """Actualización COMPLETA: cambia todas las líneas y reconstruye la leyenda."""
         if not self.plotter: return
         for filename, var in self.spectra_vars.items():
             self.plotter.toggle_spectrum_visibility(filename, var.get())
@@ -301,8 +279,7 @@ class MainAppWindow:
     
     def _show_processing_options(self, exp_type):
         if hasattr(self, 'current_exp_type') and self.current_exp_type == exp_type and self.options_container.winfo_children():
-            for widget in self.options_container.winfo_children():
-                widget.destroy()
+            for widget in self.options_container.winfo_children(): widget.destroy()
             self.current_exp_type = None
             self.status_var.set("Selecciona un tipo de experimento.")
             return
@@ -314,60 +291,86 @@ class MainAppWindow:
         if exp_type == 'lumi':
             options_frame = ttk.LabelFrame(self.options_container, text="Opciones de Procesamiento de Luminiscencia", padding=10)
             options_frame.pack(fill="x")
+            options_frame.columnconfigure(1, weight=1)
+
             self.lumi_normalize = tk.BooleanVar(value=False)
             ttk.Checkbutton(options_frame, text="Normalizar al máximo (0 a 1)", variable=self.lumi_normalize).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+            
             smoothing_label = ttk.Label(options_frame, text="Método de Suavizado:", font=('Arial', 10, 'bold'))
             smoothing_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 5))
             self.smoothing_method = tk.StringVar(value="none")
             ttk.Radiobutton(options_frame, text="Sin Suavizado", variable=self.smoothing_method, value="none", command=self._update_options_visibility).grid(row=2, column=0, sticky="w")
             ttk.Radiobutton(options_frame, text="Promedio Móvil", variable=self.smoothing_method, value="moving_average", command=self._update_options_visibility).grid(row=3, column=0, sticky="w")
             ttk.Radiobutton(options_frame, text="Savitzky-Golay", variable=self.smoothing_method, value="savgol", command=self._update_options_visibility).grid(row=4, column=0, sticky="w")
+            
             self.ma_params_frame = ttk.Frame(options_frame, style='TFrame')
-            ttk.Label(self.ma_params_frame, text="Tamaño Ventana:").pack(side="left", padx=(10, 5))
+            ttk.Label(self.ma_params_frame, text="Ventana:").pack(side="left", padx=(10, 5))
             self.ma_window = tk.IntVar(value=5)
-            ttk.Spinbox(self.ma_params_frame, from_=3, to=101, increment=2, textvariable=self.ma_window, width=5).pack(side="left")
+            ttk.Spinbox(self.ma_params_frame, from_=3, to=101, increment=2, textvariable=self.ma_window, width=8).pack(side="left", fill="x", expand=True)
+            
+            # --- TU SOLUCIÓN PARA SAVITZKY-GOLAY ---
             self.sg_params_frame = ttk.Frame(options_frame, style='TFrame')
-            ttk.Label(self.sg_params_frame, text="Ventana:").pack(side="left", padx=(10, 5))
+            for i in range(4):
+                self.sg_params_frame.columnconfigure(i, weight=1)
+
+            ttk.Label(self.sg_params_frame, text="Ventana:").grid(row=0, column=0, padx=(10, 5), sticky="w")
             self.sg_window = tk.IntVar(value=11)
-            ttk.Spinbox(self.sg_params_frame, from_=5, to=101, increment=2, textvariable=self.sg_window, width=5).pack(side="left")
-            ttk.Label(self.sg_params_frame, text="Orden Pol.:").pack(side="left", padx=(10, 5))
+            ttk.Spinbox(self.sg_params_frame, from_=5, to=101, increment=2,
+                        textvariable=self.sg_window, width=8).grid(row=0, column=1, sticky="ew", padx=(0,10))
+
+            ttk.Label(self.sg_params_frame, text="Orden Pol.:").grid(row=0, column=2, padx=(15, 5), sticky="w")
             self.sg_order = tk.IntVar(value=2)
-            ttk.Spinbox(self.sg_params_frame, from_=1, to=10, textvariable=self.sg_order, width=5).pack(side="left")
-            self.ma_params_frame.grid(row=3, column=1, sticky="w")
-            self.sg_params_frame.grid(row=4, column=1, sticky="w")
+            ttk.Spinbox(self.sg_params_frame, from_=1, to=10,
+                        textvariable=self.sg_order, width=8).grid(row=0, column=3, sticky="ew", padx=(0,10))
+            # --- FIN DE TU SOLUCIÓN ---
+            
+            self.ma_params_frame.grid(row=3, column=1, sticky="ew", pady=2)
+            self.sg_params_frame.grid(row=4, column=1, sticky="ew", pady=2)
 
         elif exp_type == 'uvvis':
             options_frame = ttk.LabelFrame(self.options_container, text="Opciones de Corrección de Línea Base", padding=10)
             options_frame.pack(fill="x")
+            options_frame.columnconfigure(1, weight=1)
+
             self.baseline_method = tk.StringVar(value="none")
             ttk.Radiobutton(options_frame, text="Sin Corrección", variable=self.baseline_method, value="none", command=self._update_options_visibility).grid(row=1, column=0, sticky="w")
             ttk.Radiobutton(options_frame, text="Restar Mínimo", variable=self.baseline_method, value="min", command=self._update_options_visibility).grid(row=2, column=0, sticky="w")
             ttk.Radiobutton(options_frame, text="airPLS Automático", variable=self.baseline_method, value="airpls", command=self._update_options_visibility).grid(row=3, column=0, sticky="w")
+            
+            # --- TU SOLUCIÓN PARA AIRPLS ---
             self.airpls_params_frame = ttk.Frame(options_frame, style='TFrame')
-            ttk.Label(self.airpls_params_frame, text="Suavidad (λ):").pack(side="left", padx=(10, 5))
+            for i in range(4):
+                self.airpls_params_frame.columnconfigure(i, weight=1)
+
+            ttk.Label(self.airpls_params_frame, text="Suavidad (λ):").grid(row=0, column=0, padx=(10, 5), sticky="w")
             self.airpls_lam = tk.DoubleVar(value=1e7)
-            ttk.Entry(self.airpls_params_frame, textvariable=self.airpls_lam, width=8).pack(side="left")
-            ttk.Label(self.airpls_params_frame, text="Asimetría (p):").pack(side="left", padx=(10, 5))
+            ttk.Entry(self.airpls_params_frame, textvariable=self.airpls_lam, width=10).grid(row=0, column=1, sticky="ew", padx=(0,10))
+
+            ttk.Label(self.airpls_params_frame, text="Asimetría (p):").grid(row=0, column=2, padx=(15, 5), sticky="w")
             self.airpls_p = tk.DoubleVar(value=0.01)
-            ttk.Entry(self.airpls_params_frame, textvariable=self.airpls_p, width=8).pack(side="left")
-            self.airpls_params_frame.grid(row=3, column=1, sticky="w")
+            ttk.Entry(self.airpls_params_frame, textvariable=self.airpls_p, width=10).grid(row=0, column=3, sticky="ew", padx=(0,10))
+            # --- FIN DE TU SOLUCIÓN ---
+            
+            self.airpls_params_frame.grid(row=3, column=1, sticky="ew", pady=2)
 
         self._update_options_visibility()
 
     def _update_options_visibility(self):
-        if hasattr(self, 'smoothing_method'):
-            method = self.smoothing_method.get()
-            if hasattr(self, 'ma_params_frame'): self.ma_params_frame.grid_remove()
-            if hasattr(self, 'sg_params_frame'): self.sg_params_frame.grid_remove()
-            if method == 'moving_average': self.ma_params_frame.grid()
-            elif method == 'savgol': self.sg_params_frame.grid()
-        
-        if hasattr(self, 'baseline_method'):
-            method = self.baseline_method.get()
-            if hasattr(self, 'airpls_params_frame'):
-                self.airpls_params_frame.grid_remove()
-                if method == 'airpls': self.airpls_params_frame.grid()
+        is_lumi = hasattr(self, 'current_exp_type') and self.current_exp_type == 'lumi'
+        is_uvvis = hasattr(self, 'current_exp_type') and self.current_exp_type == 'uvvis'
 
+        if hasattr(self, 'ma_params_frame'):
+            if is_lumi and self.smoothing_method.get() == 'moving_average': self.ma_params_frame.grid()
+            else: self.ma_params_frame.grid_remove()
+        
+        if hasattr(self, 'sg_params_frame'):
+            if is_lumi and self.smoothing_method.get() == 'savgol': self.sg_params_frame.grid()
+            else: self.sg_params_frame.grid_remove()
+
+        if hasattr(self, 'airpls_params_frame'):
+            if is_uvvis and self.baseline_method.get() == 'airpls': self.airpls_params_frame.grid()
+            else: self.airpls_params_frame.grid_remove()
+        
     def _on_apply_processing(self):
         if not self.loaded_spectra or self.current_exp_type is None:
             messagebox.showwarning("Sin Selección", "Por favor, carga datos y selecciona un tipo de experimento primero.")
@@ -415,7 +418,7 @@ class MainAppWindow:
         for spectrum in self.loaded_spectra:
             if spectrum['filename'] in selected_filenames:
                 spectrum['processed_dataframe'] = data_processor.process_spectrum(spectrum['dataframe'], processing_steps)
-                self.root.update_idletasks() # Mantiene la UI reactiva durante el bucle
+                self.root.update_idletasks()
 
         self.plotter.plot_spectra(self.loaded_spectra, use_processed=True)
         self._update_full_plot_visibility()
@@ -519,7 +522,7 @@ class MainAppWindow:
     def _show_about_dialog(self):
         messagebox.showinfo(
             "Acerca de Spectra Converter",
-            "Spectra Converter v4.0\n\nUna herramienta para facilitar el análisis de espectros.\nCreada con cariño y mucho Python."
+            "Spectra Converter v4.0\n\nUna herramienta para facilitar el análisis de espectros.\nCreada con cariño y mucho Python.\n \nDesarrollada por Mario Sánchez como parte de Quicap AI Innovations. La distribución está permitida siempre que esté sujeta al uso académico y no comercial.\n \nPara dudas o sugerencias me puedes encontrar en RRSS en @mariosalises.\n"
         )
 
     def _on_reset_processing(self):
