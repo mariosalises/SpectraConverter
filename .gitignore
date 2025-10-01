@@ -1,6 +1,29 @@
-# Entorno Virtual
-venv/
-
-# Archivos compilados de Python
+# Python
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
 *.pyc
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# PyUpdater
+.pyupdater/work/
+.pyupdater/spec/
+.pyupdater/config.pyu  # opcional, si no quieres subir tu config local
+.pyupdater/private.key # nunca subir la clave privada
+.pyupdater/logs/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
